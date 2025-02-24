@@ -33,10 +33,28 @@ runs:
     - name: Install
       shell: bash
       run: |
+        set -u -o pipefail
+        
+        arch=$(uname -m)
+        declare -A checksums
+        
+        checksums[amd64]=74ee4d904776673d4019ffd556f230215198c705a97e5c87f478380997cdd48a
+        checksums[arm64]=11ec0487046df209cff91edf54ca7d079192c6d6030f25cd4bf46565db879c68
+        
+        # Normalizes the download archictecture
+        case "$arch" in
+          aarch64|arm64)
+            arch=arm64
+            ;;
+          x86_64)
+            arch=amd64
+            ;;
+        esac
+        
         curl -fL \
           -o ./action \
-          https://github.com/NyanKiyoshi/pytest-django-queries-bot/releases/download/v1.2.0a2/action-handler_amd64_linux
-        echo '4793c89be2ca5e82d8e56d82a6ea4a5ee6a484780ff3fd81609c0f98b116be03 ./action' | sha256sum -c
+          https://github.com/NyanKiyoshi/pytest-django-queries-bot/releases/download/v1.3.1/action-handler_"$arch"_linux
+        echo "${checksums[$arch]} ./action" | sha256sum -c
         chmod +x ./action
 
     - name: Run
