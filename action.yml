@@ -1,0 +1,70 @@
+name: "Pytest-Django-Queries Reporter"
+description: 'GitHub Action that uploads pytest-django-queries reports from your repository to the given upstream'
+author: 'Mikail Kocak <@NyanKiyoshi>'
+
+branding:
+  icon: 'activity'
+  color: 'yellow'
+
+inputs:
+  query_raw_dump_path:
+    description: 'The path where the raw query results are located, e.g. /tmp/pytest-dump.json'
+    required: false
+
+  diff_endpoint:
+    description: 'The endpoint to invoke to upload the diffs found; for pull_request events only'
+    required: false
+
+  diff_results_base_url:
+    description: 'The endpoint to query from in order to get old raw dumps (no trailing slashes allowed); for pull_request events only'
+    required: false
+
+  upload_endpoint:
+    description: 'The endpoint to invoke to upload a raw dump; for push events only'
+    required: false
+
+  upload_secret_key:
+    description: 'The secret key to upload a raw dump; for push events only'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install
+      shell: bash
+      run: |
+        set -u -o pipefail
+        
+        arch=$(uname -m)
+        declare -A checksums
+        
+        checksums[amd64]=74ee4d904776673d4019ffd556f230215198c705a97e5c87f478380997cdd48a
+        checksums[arm64]=11ec0487046df209cff91edf54ca7d079192c6d6030f25cd4bf46565db879c68
+        
+        # Normalizes the download archictecture
+        case "$arch" in
+          aarch64|arm64)
+            arch=arm64
+            ;;
+          x86_64)
+            arch=amd64
+            ;;
+        esac
+        
+        curl -fL \
+          -o ./action \
+          https://github.com/NyanKiyoshi/pytest-django-queries-bot/releases/download/v1.3.1/action-handler_"$arch"_linux
+        echo "${checksums[$arch]} ./action" | sha256sum -c
+        chmod +x ./action
+
+    - name: Run
+      shell: bash
+      env:
+        QUERIES_UPLOAD_ENDPOINT_URL: ${{ inputs.upload_endpoint }}
+        QUERIES_UPLOAD_SECRET: ${{ inputs.upload_secret_key }}
+        QUERIES_RESULTS_PATH: ${{ inputs.query_raw_dump_path }}
+
+        DIFF_ENDPOINT: ${{ inputs.diff_endpoint }}
+        DIFF_RESULTS_BASE_URL: ${{ inputs.diff_results_base_url }}
+      run: |
+        ./action
